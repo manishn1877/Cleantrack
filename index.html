@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CleanTrack</title>
+<meta name="description" content="Find a public dustbin near you in Bangalore, and add one if it is missing.">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+body{margin:0}
+a{color:#101820}
+@keyframes crawl{to{transform:translateX(-50%)}}
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(.5);opacity:.7}100%{transform:translate(-50%,-50%) scale(2.6);opacity:0}}
+@keyframes blink{50%{opacity:0}}
+.crawl{animation:crawl 36s linear infinite}
+.crawl-rev{animation:crawl 44s linear infinite reverse}
+.pulse{animation:pulse 2s ease-out infinite}
+@keyframes scan{0%{top:0}100%{top:calc(100% - 6px)}}
+.scan{animation:scan 1.5s ease-in-out infinite alternate}
+.cam:focus-within{outline:3px solid #6A45F0;outline-offset:3px}
+.blink{animation:blink 1s steps(1) infinite}
+@keyframes bob{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(1.5deg) translateY(-5px)}}
+.bob{animation:bob 3.2s ease-in-out infinite}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.bar{transform-origin:left center;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.rise{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+.rise:nth-child(2){animation-delay:.1s}.rise:nth-child(3){animation-delay:.2s}.rise:nth-child(4){animation-delay:.3s}.rise:nth-child(5){animation-delay:.4s}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(255,90,78,.7)}100%{box-shadow:0 0 0 14px rgba(255,90,78,0)}}
+.ping{animation:ping 1.8s ease-out infinite}
+@keyframes wag{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg)}40%{transform:rotate(7deg)}60%{transform:rotate(-4deg)}}
+header button:hover svg{animation:wag .6s ease-in-out}
+.press:active{transform:translate(3px,3px) !important}
+a:focus-visible,button:focus-visible{outline:3px solid #6A45F0;outline-offset:3px}
+@media (prefers-reduced-motion: reduce){.crawl,.crawl-rev,.pulse,.blink,.scan,.bob,.bar,.rise,.ping,header button:hover svg{animation:none !important}}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<template id="tpl">
+
+
+<div id="top" style="background-color:#F4F1FA; background-image:radial-gradient(rgba(16,24,32,0.14) 1.2px, transparent 1.6px); background-size:22px 22px; color:#101820; font-family:'DM Sans', system-ui, sans-serif; overflow-x:clip">
+
+  <!-- NAV -->
+  <header style="background:#00A86B; border-bottom:3px solid #101820">
+    <div style="max-width:1240px; margin:0 auto; padding:14px 32px; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px">
+      <button type="button" onClick="{{goHome}}" aria-label="CleanTrack, back to the map" style="display:flex; align-items:center; gap:10px; background:none; border:0; padding:0; cursor:pointer; color:#101820; font:inherit">
+        <svg width="38" height="38" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="6" y="0" width="4" height="1" fill="#101820"/>
+          <rect x="3" y="1" width="10" height="2" fill="#101820"/>
+          <rect x="3" y="3" width="10" height="12" fill="#101820"/>
+          <rect x="4" y="4" width="8" height="10" fill="#F4F1FA"/>
+          <rect x="6" y="5" width="1" height="8" fill="#B9C7C1"/>
+          <rect x="9" y="5" width="1" height="8" fill="#B9C7C1"/>
+          <rect x="13" y="0" width="2" height="2" fill="#FFD23F"/>
+        </svg>
+        <span style="font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:28px; letter-spacing:-0.03em">CleanTrack</span>
+      </button>
+      <nav style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
+        <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="3">
+          <button type="button" class="press" onClick="{{tab.pick}}" aria-pressed="{{tab.pressed}}" style="cursor:pointer; min-height:44px; padding:0 18px; background:{{tab.bg}}; color:#101820; border:3px solid #101820; border-radius:999px; box-shadow:{{tab.shadow}}; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:16px">{{tab.label}}</button>
+        </sc-for>
+      </nav>
+    </div>
+  </header>
+
+  <sc-if value="{{isMap}}" hint-placeholder-val="{{ true }}">
+  <!-- INTRO -->
+  <section style="max-width:1240px; margin:0 auto; padding:40px 32px 24px; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:24px">
+    <h1 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:clamp(40px, 4.8vw, 68px); line-height:0.98; letter-spacing:-0.035em; text-transform:uppercase">
+      <span>Got trash?</span>
+      <span style="color:#F4F1FA; -webkit-text-stroke:2.5px #101820">Find the</span>
+      <span class="bob" style="display:inline-block; padding:0 14px 6px; background:#FFD23F; border:3px solid #101820; box-shadow:6px 6px 0 #101820; transform:rotate(-2deg)">nearest bin</span>
+    </h1>
+    <div style="display:flex; flex-wrap:wrap; gap:16px">
+      <label class="cam press" style="position:relative; display:inline-flex; align-items:center; gap:10px; min-height:56px; padding:0 26px; background:#00A86B; color:#101820; border:3px solid #101820; border-radius:14px; box-shadow:6px 6px 0 #101820; font-weight:700; font-size:18px; cursor:pointer">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#101820" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        Photo a bin
+        <input id="cam-home" type="file" accept="image/*" capture="environment" aria-label="Take a photo of a bin" onChange="{{onCamera}}" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0">
+      </label>
+      <button type="button" class="press" onClick="{{goAdd}}" style="cursor:pointer; min-height:56px; padding:0 26px; background:#FFFFFF; color:#101820; border:3px solid #101820; border-radius:14px; box-shadow:6px 6px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:18px">Add a bin</button>
+    </div>
+  </section>
+
+  <!-- MAP APP -->
+  <section id="map" style="max-width:1240px; margin:0 auto; padding:16px 32px 64px; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:stretch; gap:28px">
+
+    <!-- sidebar -->
+    <div style="flex:1 1 340px; min-width:0; box-sizing:border-box; background:#FFFFFF; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; padding:20px; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+        <span style="font-family:'Silkscreen', monospace; font-size:20px; letter-spacing:0.04em">NEAR YOU</span>
+        <span style="font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.1em; padding:4px 10px; border-radius:999px; background:#F4F1FA; border:1px solid rgba(16,24,32,0.45)">LAST READINGS</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <label for="bin-search" style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">SEARCH AREA OR LANDMARK</label>
+        <input id="bin-search" type="search" value="{{query}}" onChange="{{onQuery}}" placeholder="Try Gandhi Bazaar or National College" style="box-sizing:border-box; width:100%; min-height:48px; padding:0 14px; border:3px solid #101820; border-radius:12px; background:#F4F1FA; color:#101820; font-family:'DM Sans', system-ui, sans-serif; font-size:16px; font-weight:500">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">ROOM FOR</span>
+        <div style="display:flex; flex-wrap:wrap; gap:8px">
+          <sc-for list="{{chips}}" as="chip" hint-placeholder-count="3">
+            <button type="button" onClick="{{chip.pick}}" aria-pressed="{{chip.pressed}}" style="cursor:pointer; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; min-height:44px; padding:0 16px; border:3px solid #101820; border-radius:999px; color:#101820; background:{{chip.bg}}; box-shadow:{{chip.shadow}}; transform:translate({{chip.shift}}, {{chip.shift}}); transition:transform .15s, box-shadow .15s, background .15s">{{chip.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500">{{shownText}}</div>
+      <div role="status" style="display:flex; flex-direction:column; align-items:flex-start; gap:8px; background:#F4F1FA; border:2px solid #101820; border-radius:12px; padding:10px 12px">
+        <span style="font-size:14px; line-height:1.4; font-weight:500">{{locText}}</span>
+        <sc-if value="{{showLocBtn}}" hint-placeholder-val="{{ true }}">
+          <button type="button" class="press" onClick="{{onLoc}}" style="cursor:pointer; min-height:44px; padding:0 16px; background:#FFD23F; color:#101820; border:3px solid #101820; border-radius:10px; box-shadow:3px 3px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:14px">{{locBtn}}</button>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}">
+        <div style="border:3px dashed #101820; border-radius:12px; padding:18px; font-size:16px; line-height:1.5">No bins with room match that. Try All bins, or clear the search.</div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:10px; max-height:392px; overflow-y:auto; padding:2px 8px 8px 2px">
+        <sc-for list="{{rows}}" as="b" hint-placeholder-count="6">
+          <button type="button" onClick="{{b.pick}}" aria-pressed="{{b.pressed}}" style="display:flex; align-items:center; gap:12px; width:100%; box-sizing:border-box; text-align:left; cursor:pointer; padding:10px 12px; background:{{b.rowBg}}; border:{{b.rowBorder}}; border-radius:12px; box-shadow:{{b.rowShadow}}; font-family:'DM Sans', system-ui, sans-serif; color:#101820">
+            <span aria-hidden="true" style="flex:none; width:40px; height:40px; border:3px solid #101820; box-sizing:border-box; background:{{b.swatch}}"></span>
+            <span style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px">
+              <span style="font-weight:700; font-size:15px; line-height:1.25">{{b.name}}</span>
+              <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500">{{b.meta}}</span>
+            </span>
+            <span aria-hidden="true" style="flex:none; display:flex; flex-direction:column; gap:5px">
+              <span style="display:flex; align-items:center; gap:6px"><span style="font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700">{{b.wLabel}}</span><span style="display:block; width:44px; height:9px; border:2px solid #101820; background:#FFFFFF"><span class="bar" style="display:block; width:{{b.wetW}}; height:100%; background:{{b.wetColor}}"></span></span></span>
+              <sc-if value="{{b.showDry}}" hint-placeholder-val="{{ true }}"><span style="display:flex; align-items:center; gap:6px"><span style="font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700">D</span><span style="display:block; width:44px; height:9px; border:2px solid #101820; background:#FFFFFF"><span class="bar" style="display:block; width:{{b.dryW}}; height:100%; background:{{b.dryColor}}"></span></span></span></sc-if>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- map -->
+    <div style="flex:2.2 1 480px; min-width:0; box-sizing:border-box; position:relative; min-height:600px; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; overflow:hidden; background:#DDF7E7">
+      <svg viewBox="0 0 800 560" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true" style="position:absolute; inset:0; width:100%; height:100%">
+        <defs>
+          <pattern id="px2" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#10182014" stroke-width="1"/></pattern>
+        </defs>
+        <rect width="800" height="560" fill="#DDF7E7"/>
+        <rect x="180" y="150" width="150" height="110" fill="#A8E6C3"/>
+        <rect x="420" y="330" width="170" height="120" fill="#A8E6C3"/>
+        <rect x="30" y="340" width="110" height="120" fill="#A8E6C3"/>
+        <rect x="610" y="150" width="20" height="70" fill="#8FD8F5"/>
+        <rect x="630" y="130" width="130" height="110" fill="#8FD8F5"/>
+        <rect x="760" y="150" width="40" height="70" fill="#8FD8F5"/>
+        <rect x="0" y="110" width="800" height="14" fill="#FFFFFF"/>
+        <rect x="0" y="260" width="800" height="20" fill="#FFE38A"/>
+        <rect x="0" y="420" width="800" height="14" fill="#FFFFFF"/>
+        <rect x="0" y="505" width="800" height="12" fill="#FFFFFF"/>
+        <rect x="140" y="0" width="14" height="560" fill="#FFFFFF"/>
+        <rect x="340" y="0" width="20" height="560" fill="#FFE38A"/>
+        <rect x="560" y="0" width="14" height="560" fill="#FFFFFF"/>
+        <rect x="720" y="0" width="12" height="560" fill="#FFFFFF"/>
+        <rect x="20" y="20" width="100" height="70" fill="#E7E3F3"/>
+        <rect x="170" y="24" width="150" height="66" fill="#E7E3F3"/>
+        <rect x="380" y="18" width="150" height="74" fill="#E7E3F3"/>
+        <rect x="590" y="24" width="110" height="66" fill="#E7E3F3"/>
+        <rect x="746" y="20" width="40" height="70" fill="#E7E3F3"/>
+        <rect x="20" y="136" width="100" height="104" fill="#E7E3F3"/>
+        <rect x="380" y="140" width="170" height="100" fill="#E7E3F3"/>
+        <rect x="590" y="294" width="110" height="110" fill="#E7E3F3"/>
+        <rect x="746" y="294" width="40" height="110" fill="#E7E3F3"/>
+        <rect x="170" y="296" width="150" height="110" fill="#E7E3F3"/>
+        <rect x="170" y="446" width="150" height="46" fill="#E7E3F3"/>
+        <rect x="380" y="456" width="160" height="38" fill="#E7E3F3"/>
+        <rect x="590" y="448" width="110" height="46" fill="#E7E3F3"/>
+        <rect x="20" y="470" width="100" height="24" fill="#E7E3F3"/>
+        <rect width="800" height="560" fill="url(#px2)"/>
+      </svg>
+
+      <div style="position:absolute; left:14px; top:14px; z-index:3; display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:8px 12px; background:rgba(255,255,255,0.62); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.9); border-radius:12px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700">
+        <span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:12px; height:12px; background:#00A86B; border:2px solid #101820"></span>Room</span>
+        <span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:12px; height:12px; background:#FFD23F; border:2px solid #101820"></span>Filling</span>
+        <span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:12px; height:12px; background:#FF5A4E; border:2px solid #101820"></span>80%+</span>
+        <span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:12px; height:12px; background:#B9C7C1; border:2px solid #101820"></span>No sensor</span>
+      </div>
+
+      <sc-for list="{{pins}}" as="p" hint-placeholder-count="8">
+        <button type="button" aria-label="{{p.name}}" onClick="{{p.pick}}" style="position:absolute; left:{{p.left}}; top:{{p.top}}; width:{{p.size}}; height:{{p.size}}; padding:0; cursor:pointer; background:{{p.color}}; border:3px solid #101820; box-shadow:{{p.shadow}}; opacity:{{p.opacity}}; transform:translate(-50%, -50%); transition:opacity .25s, width .15s, height .15s; z-index:{{p.z}}"></button>
+      </sc-for>
+
+      <sc-if value="{{hasLoc}}" hint-placeholder-val="{{ true }}">
+        <div class="pulse" aria-hidden="true" style="position:absolute; left:{{youLeft}}; top:{{youTop}}; width:34px; height:34px; border-radius:50%; background:#6A45F0; opacity:0.5; transform:translate(-50%, -50%)"></div>
+        <div role="img" aria-label="Your location" style="position:absolute; left:{{youLeft}}; top:{{youTop}}; width:16px; height:16px; border-radius:50%; background:#6A45F0; border:3px solid #FFFFFF; box-shadow:0 0 0 3px #101820; transform:translate(-50%, -50%)"></div>
+      </sc-if>
+
+      <div style="position:absolute; left:14px; bottom:14px; z-index:4; width:calc(100% - 28px); max-width:430px; box-sizing:border-box; background:rgba(255,255,255,0.7); backdrop-filter:blur(18px) saturate(170%); -webkit-backdrop-filter:blur(18px) saturate(170%); border:1px solid rgba(255,255,255,0.9); border-radius:20px; padding:16px; box-shadow:0 18px 40px rgba(16,24,32,0.22), inset 0 1px 0 rgba(255,255,255,0.9); display:flex; flex-direction:column; gap:10px">
+        <sc-if value="{{hasSel}}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.12em">SELECTED BIN</span>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; padding:3px 10px; border:2px solid #101820; border-radius:999px; background:{{selStatusColor}}">{{selStatus}}</span>
+          </div>
+          <div style="font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:22px; line-height:1.1; letter-spacing:-0.02em">{{selName}}</div>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500">{{selMeta}}</div>
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <div style="display:flex; align-items:center; gap:10px"><span style="width:38px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700">{{selWetLabel}}</span><span style="display:block; flex:1 1 auto; height:12px; border:2px solid #101820; background:#FFFFFF"><span class="bar" style="display:block; width:{{selWetW}}; height:100%; background:{{selWetColor}}"></span></span><span style="width:40px; text-align:right; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700">{{selWetText}}</span></div>
+            <sc-if value="{{selShowDry}}" hint-placeholder-val="{{ true }}"><div style="display:flex; align-items:center; gap:10px"><span style="width:38px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700">DRY</span><span style="display:block; flex:1 1 auto; height:12px; border:2px solid #101820; background:#FFFFFF"><span class="bar" style="display:block; width:{{selDryW}}; height:100%; background:{{selDryColor}}"></span></span><span style="width:40px; text-align:right; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700">{{selDryText}}</span></div></sc-if>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px">
+            <button type="button" class="press" onClick="{{onConfirm}}" disabled="{{selConfirmed}}" style="cursor:pointer; min-height:44px; padding:0 18px; background:{{selConfirmBg}}; color:#101820; border:3px solid #101820; border-radius:10px; box-shadow:4px 4px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:15px">{{selConfirmLabel}}</button>
+            <button type="button" class="press" onClick="{{onReportBin}}" style="cursor:pointer; min-height:44px; padding:0 16px; background:#FFFFFF; color:#101820; border:3px solid #101820; border-radius:10px; box-shadow:4px 4px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:15px">Report a problem</button>
+            <span style="font-size:14px; font-weight:500; flex:1 1 100%">{{selConfirm}}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:16px; line-height:1.5; font-weight:500">Nothing to show for this search. Pick All bins or clear the search.</div>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+
+  <!-- STORY -->
+  <section style="max-width:1240px; margin:0 auto; padding:0 32px 72px; box-sizing:border-box">
+    <div style="background:#FFFFFF; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; padding:28px; display:flex; flex-direction:column; gap:20px">
+      <h2 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:32px; line-height:1.05; letter-spacing:-0.025em">How CleanTrack started</h2>
+      <div style="display:flex; flex-wrap:wrap; gap:16px">
+        <div class="rise" style="flex:1 1 220px; min-width:0; border:3px solid #101820; border-radius:14px; padding:16px; background:#FFE38A; display:flex; flex-direction:column; gap:6px"><span style="font-family:'Silkscreen', monospace; font-size:13px">FIRST SEM</span><span style="font-size:15px; line-height:1.45; font-weight:500">We built a smart dustbin with a sensor that reads how full it is.</span></div>
+        <div class="rise" style="flex:1 1 220px; min-width:0; border:3px solid #101820; border-radius:14px; padding:16px; background:#A8E6C3; display:flex; flex-direction:column; gap:6px"><span style="font-family:'Silkscreen', monospace; font-size:13px">ON THE STREET</span><span style="font-size:15px; line-height:1.45; font-weight:500">Sensor bins went up at Gandhi Bazaar and National College. This app tracked every one.</span></div>
+        <div class="rise" style="flex:1 1 220px; min-width:0; border:3px solid #101820; border-radius:14px; padding:16px; background:#BFE9FA; display:flex; flex-direction:column; gap:6px"><span style="font-family:'Silkscreen', monospace; font-size:13px">OPEN TO ALL</span><span style="font-size:15px; line-height:1.45; font-weight:500">Why stop at our bins? Shops with a bin they barely use can add it, so people walk to it instead of dumping on the road.</span></div>
+        <div class="rise" style="flex:1 1 220px; min-width:0; border:3px solid #101820; border-radius:14px; padding:16px; background:#E9E4FF; display:flex; flex-direction:column; gap:6px"><span style="font-family:'Silkscreen', monospace; font-size:13px">HIT A WALL</span><span style="font-size:15px; line-height:1.45; font-weight:500">We tried putting bins on street light poles. BESCOM compliance and permissions stopped it, so we kept the shop-owner idea. Our own sensors are paused for now.</span></div>
+      </div>
+    </div>
+  </section>
+
+  </sc-if>
+
+  <!-- ADD A BIN PAGE -->
+  <sc-if value="{{isAdd}}" hint-placeholder-val="{{ false }}">
+  <section style="max-width:640px; margin:0 auto; padding:40px 32px 80px; box-sizing:border-box; display:flex; flex-direction:column; gap:24px">
+    <h1 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:clamp(40px, 5vw, 60px); line-height:1; letter-spacing:-0.035em">Add a bin</h1>
+
+    <div style="box-sizing:border-box; background:#FFFFFF; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; padding:22px; display:flex; flex-direction:column; gap:18px">
+
+      <div style="display:flex; flex-wrap:wrap; gap:8px">
+        <sc-for list="{{methodRows}}" as="m" hint-placeholder-count="3">
+          <button type="button" onClick="{{m.pick}}" aria-pressed="{{m.pressed}}" style="cursor:pointer; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px; min-height:44px; padding:0 18px; border:3px solid #101820; border-radius:999px; color:#101820; background:{{m.bg}}; box-shadow:{{m.shadow}}; transform:translate({{m.shift}}, {{m.shift}}); transition:transform .15s, box-shadow .15s, background .15s">{{m.title}}</button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{showQr}}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative; height:260px; background:#0B1210; border:3px solid #101820; border-radius:14px; display:flex; align-items:center; justify-content:center; overflow:hidden">
+          <div aria-hidden="true" style="position:absolute; left:18px; top:18px; width:28px; height:28px; border-left:4px solid #4DF0A0; border-top:4px solid #4DF0A0"></div>
+          <div aria-hidden="true" style="position:absolute; right:18px; top:18px; width:28px; height:28px; border-right:4px solid #4DF0A0; border-top:4px solid #4DF0A0"></div>
+          <div aria-hidden="true" style="position:absolute; left:18px; bottom:18px; width:28px; height:28px; border-left:4px solid #4DF0A0; border-bottom:4px solid #4DF0A0"></div>
+          <div aria-hidden="true" style="position:absolute; right:18px; bottom:18px; width:28px; height:28px; border-right:4px solid #4DF0A0; border-bottom:4px solid #4DF0A0"></div>
+          <div aria-hidden="true" style="background:#FFFFFF; padding:10px; width:150px; height:150px; box-sizing:border-box; display:grid; grid-template-columns:repeat(21, minmax(0, 1fr)); grid-auto-rows:1fr">
+            <sc-for list="{{qrCells}}" as="c" hint-placeholder-count="441"><div style="background:{{c.bg}}"></div></sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showPhoto}}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative; height:260px; background:linear-gradient(180deg, #8FD8F5 0, #DDF7E7 62%, #A8E6C3 62%, #A8E6C3 100%); border:3px solid #101820; border-radius:14px; display:flex; align-items:flex-end; justify-content:center; overflow:hidden">
+          <svg width="120" height="120" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" style="margin-bottom:30px">
+            <rect x="6" y="0" width="4" height="1" fill="#101820"/>
+            <rect x="3" y="1" width="10" height="2" fill="#101820"/>
+            <rect x="3" y="3" width="10" height="12" fill="#101820"/>
+            <rect x="4" y="4" width="8" height="10" fill="#00A86B"/>
+            <rect x="6" y="5" width="1" height="8" fill="#006B44"/>
+            <rect x="9" y="5" width="1" height="8" fill="#006B44"/>
+          </svg>
+          <div aria-hidden="true" style="position:absolute; left:18px; top:18px; width:28px; height:28px; border-left:4px solid #101820; border-top:4px solid #101820"></div>
+          <div aria-hidden="true" style="position:absolute; right:18px; top:18px; width:28px; height:28px; border-right:4px solid #101820; border-top:4px solid #101820"></div>
+          <div aria-hidden="true" style="position:absolute; left:18px; bottom:18px; width:28px; height:28px; border-left:4px solid #101820; border-bottom:4px solid #101820"></div>
+          <div aria-hidden="true" style="position:absolute; right:18px; bottom:18px; width:28px; height:28px; border-right:4px solid #101820; border-bottom:4px solid #101820"></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showManual}}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative; height:260px; background-color:#DDF7E7; background-image:linear-gradient(rgba(16,24,32,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16,24,32,0.08) 1px, transparent 1px); background-size:20px 20px; border:3px solid #101820; border-radius:14px; overflow:hidden">
+          <div aria-hidden="true" style="position:absolute; left:0; right:0; top:50%; height:14px; background:#FFE38A; transform:translateY(-50%)"></div>
+          <div aria-hidden="true" style="position:absolute; top:0; bottom:0; left:36%; width:12px; background:#FFFFFF"></div>
+          <div aria-hidden="true" style="position:absolute; left:50%; top:50%; width:44px; height:44px; border:3px solid #101820; border-radius:50%; transform:translate(-50%, -50%)"></div>
+          <div aria-hidden="true" style="position:absolute; left:50%; top:50%; width:22px; height:22px; background:#FFD23F; border:3px solid #101820; box-shadow:3px 3px 0 #101820; transform:translate(-50%, -50%)"></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showConfirm}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <sc-if value="{{hasPhoto}}" hint-placeholder-val="{{ false }}">
+            <img src="{{photoUrl}}" alt="Your photo of the bin" style="display:block; width:100%; max-width:100%; height:220px; object-fit:cover; border:3px solid #101820; border-radius:14px">
+          </sc-if>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:700; line-height:1.5">{{coordLine}}<br><span style="font-weight:500">{{sourceLine}}</span></div>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">WHAT KIND OF BIN</span>
+            <div style="display:flex; flex-wrap:wrap; gap:8px">
+              <sc-for list="{{kindChips}}" as="k" hint-placeholder-count="2">
+                <button type="button" onClick="{{k.pick}}" aria-pressed="{{k.pressed}}" style="cursor:pointer; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; min-height:44px; padding:0 16px; border:3px solid #101820; border-radius:999px; color:#101820; background:{{k.bg}}; box-shadow:{{k.shadow}}; transform:translate({{k.shift}}, {{k.shift}})">{{k.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showDone}}" hint-placeholder-val="{{ false }}">
+        <div style="height:160px; background:#00A86B; border:3px solid #101820; border-radius:14px; box-shadow:5px 5px 0 #101820; display:flex; align-items:center; justify-content:center; gap:16px">
+          <svg width="56" height="56" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="1" y="6" width="2" height="2" fill="#101820"/>
+            <rect x="3" y="8" width="2" height="2" fill="#101820"/>
+            <rect x="5" y="6" width="2" height="2" fill="#101820"/>
+            <rect x="7" y="4" width="2" height="2" fill="#101820"/>
+            <rect x="9" y="2" width="2" height="2" fill="#101820"/>
+          </svg>
+          <span style="font-family:'Silkscreen', monospace; font-size:22px; letter-spacing:0.05em">BIN PINNED</span>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-wrap:wrap; gap:14px">
+        <sc-if value="{{showPhoto}}" hint-placeholder-val="{{ false }}">
+          <label class="cam press" style="position:relative; display:inline-flex; align-items:center; gap:10px; min-height:52px; padding:0 26px; background:#00A86B; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-weight:700; font-size:17px; cursor:pointer">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#101820" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            Open camera
+            <input id="cam-add" type="file" accept="image/*" capture="environment" aria-label="Open the camera" onChange="{{onCamera}}" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0">
+          </label>
+        </sc-if>
+        <sc-if value="{{showNext}}" hint-placeholder-val="{{ true }}">
+          <button type="button" class="press" onClick="{{onNext}}" style="cursor:pointer; min-height:52px; padding:0 26px; background:#00A86B; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:17px">{{ctaLabel}}</button>
+        </sc-if>
+        <sc-if value="{{canReset}}" hint-placeholder-val="{{ false }}">
+          <button type="button" class="press" onClick="{{onReset}}" style="cursor:pointer; min-height:52px; padding:0 22px; background:#FFFFFF; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:17px">{{resetLabel}}</button>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- REPORT PAGE -->
+  <sc-if value="{{isReport}}" hint-placeholder-val="{{ false }}">
+  <section style="max-width:1240px; margin:0 auto; padding:44px 32px 88px; box-sizing:border-box; display:flex; flex-direction:column; gap:32px">
+    <div style="display:flex; flex-direction:column; align-items:flex-start; gap:16px; max-width:820px">
+      <span style="font-family:'Silkscreen', monospace; font-size:14px; letter-spacing:0.06em; background:#FF5A4E; border:3px solid #101820; padding:6px 12px; box-shadow:4px 4px 0 #101820; text-transform:uppercase">Report a problem</span>
+      <h1 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:clamp(40px, 5vw, 70px); line-height:0.98; letter-spacing:-0.035em; text-wrap:balance">Full bin? Put it on record.</h1>
+      <p style="margin:0; font-size:16px; line-height:1.5; font-weight:500">The BBMP is now the GBA, and there is no single working place to complain yet. CleanTrack keeps a public record and gives you a message to send.</p>
+      <p style="margin:0; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:500; line-height:1.7">Sources: <a href="https://www.thenewsminute.com/karnataka/gba-to-replace-bbmp-from-sept-2-maheshwar-rao-will-be-new-commissioner" target="_blank" rel="noopener" style="font-weight:700">The News Minute on the GBA</a> · <a href="https://www.deccanherald.com/india/karnataka/bengaluru/single-window-system-to-track-civic-complaints-across-agencies-4069729" target="_blank" rel="noopener" style="font-weight:700">Deccan Herald on Sahaaya Plus</a></p>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start">
+
+      <!-- complaint form / confirmation -->
+      <div style="flex:1.2 1 400px; min-width:0; box-sizing:border-box; background:#FFFFFF; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; padding:24px; display:flex; flex-direction:column; gap:18px">
+        <sc-if value="{{repOpen}}" hint-placeholder-val="{{ true }}">
+          <h2 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:30px; line-height:1.05; letter-spacing:-0.025em">What is wrong?</h2>
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <label for="rep-bin" style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">WHICH BIN</label>
+            <select id="rep-bin" value="{{repBinStr}}" onChange="{{onRepBin}}" style="box-sizing:border-box; width:100%; min-height:48px; padding:0 12px; border:3px solid #101820; border-radius:12px; background:#F4F1FA; color:#101820; font-family:'DM Sans', system-ui, sans-serif; font-size:16px; font-weight:500">
+              <option data-sc-for="{{binOptions}}" data-sc-as="o" value="{{o.v}}">{{o.label}}</option>
+            </select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">WHICH SIDE</span>
+            <div style="display:flex; flex-wrap:wrap; gap:8px">
+              <sc-for list="{{sideChips}}" as="s" hint-placeholder-count="2">
+                <button type="button" onClick="{{s.pick}}" aria-pressed="{{s.pressed}}" style="cursor:pointer; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; min-height:44px; padding:0 18px; border:3px solid #101820; border-radius:999px; color:#101820; background:{{s.bg}}; box-shadow:{{s.shadow}}; transform:translate({{s.shift}}, {{s.shift}}); transition:transform .15s, box-shadow .15s, background .15s">{{s.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">ISSUE</span>
+            <div style="display:flex; flex-wrap:wrap; gap:8px">
+              <sc-for list="{{issueChips}}" as="i" hint-placeholder-count="5">
+                <button type="button" onClick="{{i.pick}}" aria-pressed="{{i.pressed}}" style="cursor:pointer; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; min-height:44px; padding:0 16px; border:3px solid #101820; border-radius:999px; color:#101820; background:{{i.bg}}; box-shadow:{{i.shadow}}; transform:translate({{i.shift}}, {{i.shift}}); transition:transform .15s, box-shadow .15s, background .15s">{{i.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <label for="rep-note" style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">NOTE (OPTIONAL)</label>
+            <textarea id="rep-note" rows="3" value="{{repNote}}" onChange="{{onRepNote}}" placeholder="Overflowing since morning, rubbish on the footpath" style="box-sizing:border-box; width:100%; padding:12px; border:3px solid #101820; border-radius:12px; background:#F4F1FA; color:#101820; font-family:'DM Sans', system-ui, sans-serif; font-size:16px; font-weight:500; resize:vertical"></textarea>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:14px">
+            <button type="button" class="press" onClick="{{onRepPhoto}}" style="cursor:pointer; min-height:48px; padding:0 18px; background:#FFFFFF; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:4px 4px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:15px">{{photoLabel}}</button>
+            <sc-if value="{{repPhoto}}" hint-placeholder-val="{{ false }}">
+              <span aria-hidden="true" style="display:inline-flex; align-items:center; justify-content:center; width:64px; height:48px; background:#A8E6C3; border:3px solid #101820; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700">PHOTO</span>
+            </sc-if>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:14px">
+            <button type="button" class="press" onClick="{{onSend}}" style="cursor:pointer; min-height:56px; padding:0 28px; background:#FF5A4E; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:6px 6px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:18px">Log this report</button>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500">It goes on the public record below. You send it on.</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{repSent}}" hint-placeholder-val="{{ false }}">
+          <div style="background:#00A86B; border:3px solid #101820; border-radius:14px; box-shadow:5px 5px 0 #101820; padding:22px; display:flex; flex-direction:column; gap:8px">
+            <span style="font-family:'Silkscreen', monospace; font-size:20px; letter-spacing:0.05em">LOGGED ON CLEANTRACK</span>
+            <span style="font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:34px; letter-spacing:-0.02em; line-height:1">{{ticketId}}</span>
+            <span style="font-size:17px; line-height:1.45; font-weight:500">{{ticketSummary}}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:center; gap:12px"><span aria-hidden="true" style="flex:none; width:20px; height:20px; background:#00A86B; border:3px solid #101820"></span><span style="font-weight:700">On the public record, so neighbours can see it</span></div>
+            <div style="display:flex; align-items:center; gap:12px"><span aria-hidden="true" style="flex:none; width:20px; height:20px; background:{{sentBoxBg}}; border:3px solid #101820"></span><span style="font-weight:500">{{sentText}}</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <label for="msg-text" style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">MESSAGE TO SEND</label>
+            <textarea id="msg-text" rows="7" readonly value="{{ticketMessage}}" onChange="{{onMsgKeep}}" style="box-sizing:border-box; width:100%; padding:12px; border:3px solid #101820; border-radius:12px; background:#F4F1FA; color:#101820; font-family:'JetBrains Mono', monospace; font-size:13px; line-height:1.6; resize:vertical"></textarea>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:14px">
+            <button type="button" class="press" onClick="{{onCopy}}" style="cursor:pointer; min-height:52px; padding:0 22px; background:#FFD23F; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:16px">{{copyLabel}}</button>
+            <button type="button" class="press" onClick="{{onMarkSent}}" disabled="{{sentDone}}" style="cursor:pointer; min-height:52px; padding:0 22px; background:{{sentBtnBg}}; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:16px">{{sentLabel}}</button>
+          </div>
+          <div style="border:3px dashed #101820; border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.1em">WHERE YOU CAN SEND IT</span>
+            <span style="font-size:14px; line-height:1.45">Send it to your ward's city corporation office. Sahaaya Plus, the GBA's planned single platform, may replace this once it launches.</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:14px">
+            <button type="button" class="press" onClick="{{onAnother}}" style="cursor:pointer; min-height:52px; padding:0 22px; background:#FFFFFF; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:16px">Report another</button>
+            <button type="button" class="press" onClick="{{goMap}}" style="cursor:pointer; min-height:52px; padding:0 22px; background:#FFFFFF; color:#101820; border:3px solid #101820; border-radius:12px; box-shadow:5px 5px 0 #101820; font-family:'DM Sans', system-ui, sans-serif; font-weight:700; font-size:16px">Back to the map</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1 1 420px; min-width:0; display:flex; flex-direction:column; gap:28px">
+
+        <!-- public record -->
+        <div style="box-sizing:border-box; background:#FFFFFF; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; padding:24px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px">
+            <h2 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:28px; line-height:1.05; letter-spacing:-0.025em">Ticket history</h2>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.08em; padding:3px 10px; border-radius:999px; background:#F4F1FA; border:1px solid rgba(16,24,32,0.45)">LATEST FIRST</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{recordRows}}" as="r" hint-placeholder-count="4">
+              <div class="rise" style="display:flex; align-items:center; justify-content:space-between; gap:10px; background:#FFFFFF; border:2px solid #101820; border-radius:10px; padding:10px 12px">
+                <span style="min-width:0; display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:15px; font-weight:700; line-height:1.25">{{r.title}}</span>
+                  <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500">{{r.meta}}</span>
+                </span>
+                <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; background:{{r.statusBg}}; border:2px solid #101820; padding:2px 8px; border-radius:999px">{{r.status}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- auto report at 80%, per side -->
+        <div style="box-sizing:border-box; background:#E9E4FF; border:3px solid #101820; border-radius:20px; box-shadow:8px 8px 0 #101820; padding:24px; display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase">Automatic</span>
+            <h2 style="margin:0; font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:32px; line-height:1.05; letter-spacing:-0.025em">Logged automatically at 80% full</h2>
+            <p style="margin:0; font-size:15px; line-height:1.5">Each side of a wet and dry bin is watched on its own. One-bin spots (shops, malls) count as one. At 80% the sensor logs a ticket by itself, and another only after the bin is emptied.</p>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px">
+            <span class="rise" style="flex:1 1 120px; background:#FFFFFF; border:3px solid #101820; border-radius:12px; padding:10px 12px; font-size:14px; font-weight:700"><span style="display:block; font-family:'Silkscreen', monospace; font-size:12px; margin-bottom:4px">1</span>Sensor reads 80%</span>
+            <span class="rise" style="flex:1 1 120px; background:#FFFFFF; border:3px solid #101820; border-radius:12px; padding:10px 12px; font-size:14px; font-weight:700"><span style="display:block; font-family:'Silkscreen', monospace; font-size:12px; margin-bottom:4px">2</span>Ticket is logged</span>
+            <span class="rise" style="flex:1 1 120px; background:#FFFFFF; border:3px solid #101820; border-radius:12px; padding:10px 12px; font-size:14px; font-weight:700"><span style="display:block; font-family:'Silkscreen', monospace; font-size:12px; margin-bottom:4px">3</span>Bin is collected</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- FOOTER -->
+  <footer style="background:#101820; color:#F4F1FA">
+    <div style="max-width:1240px; margin:0 auto; padding:32px; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px">
+      <div style="display:flex; align-items:center; gap:10px">
+        <svg width="28" height="28" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="6" y="0" width="4" height="1" fill="#F4F1FA"/>
+          <rect x="3" y="1" width="10" height="2" fill="#F4F1FA"/>
+          <rect x="3" y="3" width="10" height="12" fill="#F4F1FA"/>
+          <rect x="4" y="4" width="8" height="10" fill="#00A86B"/>
+          <rect x="6" y="5" width="1" height="8" fill="#006B44"/>
+          <rect x="9" y="5" width="1" height="8" fill="#006B44"/>
+        </svg>
+        <span style="font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:20px; letter-spacing:-0.02em">CleanTrack</span>
+        <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500; color:#C9CED6">Crowdsourced dustbin map for Bangalore</span>
+      </div>
+      <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:500; color:#C9CED6">Sensor bins ran from our first semester. Readings shown are the last logged.</span>
+    </div>
+  </footer>
+
+</div>
+</template>
+<script>
+
+class DCLogic {
+  constructor(props) { this.props = props || {}; }
+  setState(patch) {
+    Object.assign(this.state, patch);
+    this._schedule();
+  }
+  _schedule() {
+    if (this._q) return;
+    this._q = true;
+    requestAnimationFrame(() => { this._q = false; this._render(); });
+  }
+}
+
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      view: 'map',
+      filter: 'all',
+      selected: -1,
+      loc: null,
+      locState: 'asking',
+      query: '',
+      counts: [14, 9, 21, 6, 11, 5],
+      added: [],
+      method: 'photo',
+      addStep: 0,
+      photoUrl: '',
+      confirmed: [],
+      repBin: 0,
+      repSide: 'wet',
+      repIssue: 'overflow',
+      repNote: '',
+      repPhoto: false,
+      repTicket: null,
+      tickets: 3,
+      records: [],
+      copied: false,
+      marked: false,
+      newOne: false
+    };
+    if (!window.__ctAsked) { window.__ctAsked = true; setTimeout(() => this.askLoc(), 400); }
+  }
+  askLoc() {
+    if (!navigator.geolocation) { this.setState({ locState: 'unsupported' }); return; }
+    this.setState({ locState: 'asking' });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => this.setState({ loc: { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy }, locState: 'granted', selected: -1 }),
+      (err) => this.setState({ locState: err && err.code === 1 ? 'denied' : 'unavailable' }),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  }
+  renderVals() {
+    const S = this.state;
+    const { view, filter, selected, query, counts, added, method, addStep } = S;
+    const SIDE = { wet: '#00A86B', dry: '#4CC9F0' };
+    /* REPLACE lat/lng with the GPS of each real bin (these are approximate, near the landmarks). Sensor bins have wet/dry numbers; neighbour-added bins have null. */
+    const MINLAT = 12.9370, MAXLAT = 12.9520, MINLNG = 77.5680, MAXLNG = 77.5780;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const proj = (lat, lng) => ({
+      x: clamp(8 + ((lng - MINLNG) / (MAXLNG - MINLNG)) * 84, 4, 96),
+      y: clamp(90 - ((lat - MINLAT) / (MAXLAT - MINLAT)) * 78, 6, 94)
+    });
+    const hav = (a1, o1, a2, o2) => {
+      const R = 6371000, d = Math.PI / 180;
+      const dl = (a2 - a1) * d, dn = (o2 - o1) * d;
+      const h = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(a1 * d) * Math.cos(a2 * d) * Math.sin(dn / 2) * Math.sin(dn / 2);
+      return 2 * R * Math.asin(Math.sqrt(h));
+    };
+    const fmtD = (m) => (m < 1000 ? Math.max(10, Math.round(m / 10) * 10) + ' m' : (m / 1000).toFixed(1) + ' km');
+    const loc = S.loc;
+    const baseBins = [
+      { name: 'Gandhi Bazaar, main road', lat: 12.9458, lng: 77.5708, sensor: true, wet: 86, dry: 52 },
+      { name: 'Provision store, near Gandhi Bazaar', lat: 12.9463, lng: 77.5714, one: true, wet: null, dry: null },
+      { name: 'Juice shop, near Gandhi Bazaar', lat: 12.9452, lng: 77.5701, one: true, wet: null, dry: null },
+      { name: 'National College, school gate', lat: 12.9503, lng: 77.5733, sensor: true, wet: 38, dry: 61 },
+      { name: 'National College, campus gate', lat: 12.9508, lng: 77.5741, sensor: true, wet: 55, dry: 83 },
+      { name: 'Shop at the end of the road, National College', lat: 12.9514, lng: 77.5748, one: true, wet: null, dry: null }
+    ].map((b) => Object.assign(b, proj(b.lat, b.lng)));
+    const bins = baseBins.concat(added).map((b) => {
+      const dm = loc && b.lat !== undefined ? hav(loc.lat, loc.lng, b.lat, b.lng) : null;
+      return Object.assign({}, b, { dm, d: dm !== null ? fmtD(dm) : (b.dist || '') });
+    });
+    const stat = (n) => (n === null ? '#B9C7C1' : n >= 80 ? '#FF5A4E' : n >= 50 ? '#FFD23F' : '#00A86B');
+    const pct = (n) => (n === null ? '—' : n + '%');
+    const wid = (n) => (n === null ? '0%' : n + '%');
+    const worst = (b) => (b.wet === null ? null : Math.max(b.wet, b.dry));
+    const status = (b) => {
+      if (b.wet === null) return { t: 'NO SENSOR YET', c: '#B9C7C1' };
+      if (b.one) return b.wet >= 80 ? { t: 'FULL', c: '#FF5A4E' } : b.wet >= 50 ? { t: 'FILLING', c: '#FFD23F' } : { t: 'HAS ROOM', c: '#00A86B' };
+      const full = [];
+      if (b.wet >= 80) full.push('WET');
+      if (b.dry >= 80) full.push('DRY');
+      if (full.length) return { t: full.join(' + ') + ' FULL', c: '#FF5A4E' };
+      if (Math.max(b.wet, b.dry) >= 50) return { t: 'FILLING', c: '#FFD23F' };
+      return { t: 'HAS ROOM', c: '#00A86B' };
+    };
+    const q = query.trim().toLowerCase();
+    const matches = (b) => {
+      const nameOk = !q || b.name.toLowerCase().indexOf(q) !== -1;
+      const roomOk = filter === 'all' || b[filter] === null || b[filter] < 80;
+      return nameOk && roomOk;
+    };
+    const visible = bins.map((b, i) => Object.assign({ i }, b)).filter(matches);
+    if (loc) visible.sort((p, q) => (p.dm === null ? 1e9 : p.dm) - (q.dm === null ? 1e9 : q.dm));
+    const sel = visible.find((b) => b.i === selected) || visible[0] || null;
+    const selIndex = sel ? sel.i : -1;
+    const go = (v) => () => this.setState({ view: v });
+
+    const tabsDef = [['map', 'Map'], ['add', 'Add a bin'], ['report', 'Report a problem']];
+    const tabs = tabsDef.map(([k, label]) => {
+      const on = view === k;
+      return {
+        label,
+        pressed: on ? 'true' : 'false',
+        bg: on ? '#FFD23F' : '#00A86B',
+        shadow: on ? '4px 4px 0 #101820' : '0 0 0 #101820',
+        pick: go(k)
+      };
+    });
+
+    const rows = visible.map((b) => {
+      const on = b.i === selIndex;
+      return {
+        name: b.name,
+        meta: (b.d ? b.d + ' · ' : '') + (b.wet === null ? (b.one ? 'one bin · no sensor yet' : 'no sensor yet') : b.one ? 'one bin · ' + b.wet + '% full' : 'wet ' + b.wet + '% · dry ' + b.dry + '%'),
+        showDry: !b.one,
+        wLabel: b.one ? 'F' : 'W',
+        swatch: b.one ? '#D5DAD8' : 'linear-gradient(90deg, #00A86B 50%, #4CC9F0 50%)',
+        wetW: wid(b.wet),
+        dryW: wid(b.dry),
+        wetColor: stat(b.wet),
+        dryColor: stat(b.dry),
+        pressed: on ? 'true' : 'false',
+        rowBg: on ? '#FFF3B8' : '#FFFFFF',
+        rowBorder: on ? '3px solid #101820' : '2px solid rgba(16,24,32,0.22)',
+        rowShadow: on ? '4px 4px 0 #101820' : '0 0 0 transparent',
+        pick: () => this.setState({ selected: b.i })
+      };
+    });
+
+    const pins = bins.map((b, i) => {
+      const on = matches(b);
+      const isSel = i === selIndex;
+      const val = filter === 'all' ? worst(b) : b[filter];
+      return {
+        name: b.name,
+        left: b.x + '%',
+        top: b.y + '%',
+        size: isSel ? '34px' : '28px',
+        color: stat(val),
+        opacity: on ? 1 : 0.2,
+        shadow: isSel ? '0 0 0 4px #FFFFFF, 0 0 0 7px #101820' : '3px 3px 0 #101820',
+        z: isSel ? 2 : 1,
+        pick: () => this.setState({ selected: i })
+      };
+    });
+
+    const chipDefs = [['all', 'Anything', '#FFFFFF'], ['wet', 'Wet', SIDE.wet], ['dry', 'Dry', SIDE.dry]];
+    const chips = chipDefs.map(([k, label, color]) => {
+      const active = filter === k;
+      return {
+        label,
+        bg: active ? color : '#FFFFFF',
+        shadow: active ? '0px 0px 0px #101820' : '3px 3px 0px #101820',
+        shift: active ? '3px' : '0px',
+        pressed: active ? 'true' : 'false',
+        pick: () => this.setState({ filter: k })
+      };
+    });
+
+    /* ---------- add a bin ---------- */
+    const methodDefs = [
+      { k: 'photo', title: 'Camera' },
+      { k: 'qr', title: 'QR sticker' },
+      { k: 'pin', title: 'By hand' }
+    ];
+    const methodRows = methodDefs.map((m) => {
+      const on = method === m.k;
+      return {
+        title: m.title,
+        pressed: on ? 'true' : 'false',
+        bg: on ? '#FFD23F' : '#FFFFFF',
+        shadow: on ? '0px 0px 0px #101820' : '3px 3px 0px #101820',
+        shift: on ? '3px' : '0px',
+        pick: () => this.setState({ method: m.k, addStep: 0 })
+      };
+    });
+    const ctaFirst = { qr: 'Scan QR (demo)', photo: 'Take photo (demo)', pin: 'Set location (demo)' };
+    const sourceLines = { qr: 'Code CT-0107 · first scan', photo: 'Photo attached · taken just now', pin: 'Set by hand on the map' };
+    const qrCells = [];
+    const N = 21;
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        let on;
+        const inFinder = (r0, c0) => r >= r0 && r < r0 + 7 && c >= c0 && c < c0 + 7;
+        const finder = (r0, c0) => {
+          const rr = r - r0;
+          const cc = c - c0;
+          const edge = rr === 0 || rr === 6 || cc === 0 || cc === 6;
+          const core = rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4;
+          return edge || core;
+        };
+        if (inFinder(0, 0)) on = finder(0, 0);
+        else if (inFinder(0, 14)) on = finder(0, 14);
+        else if (inFinder(14, 0)) on = finder(14, 0);
+        else if (r === 7 || c === 7 || r === 13 || c === 13) on = false;
+        else on = (r * 7 + c * 13 + r * c * 3) % 5 < 2;
+        qrCells.push({ bg: on ? '#101820' : '#FFFFFF' });
+      }
+    }
+    const kindChips = [[false, 'Wet and dry sides', '#4CC9F0'], [true, 'One bin', '#FFD23F']].map(([v, label, color]) => {
+      const on = S.newOne === v;
+      return { label, bg: on ? color : '#FFFFFF', shadow: on ? '0px 0px 0px #101820' : '3px 3px 0px #101820', shift: on ? '3px' : '0px', pressed: on ? 'true' : 'false', pick: () => this.setState({ newOne: v }) };
+    });
+    const onNext = () => {
+      const st = this.state;
+      if (st.addStep === 0) {
+        this.setState({ addStep: 1 });
+      } else if (st.addStep === 1) {
+        const n = st.added.length;
+        const here = st.loc ? Object.assign({ lat: st.loc.lat, lng: st.loc.lng }, proj(st.loc.lat, st.loc.lng)) : { x: 38 + n * 4, y: 60 + (n % 2) * 6 };
+        const nb = Object.assign({ name: 'New bin near you', dist: st.loc ? '' : 'near you', one: st.newOne, wet: null, dry: null }, here);
+        this.setState({
+          added: st.added.concat([nb]),
+          counts: st.counts.concat([1]),
+          selected: baseBins.length + n,
+          filter: 'all',
+          query: '',
+          addStep: 2,
+          newOne: false,
+          photoUrl: ''
+        });
+      } else {
+        this.setState({ view: 'map', addStep: 0 });
+      }
+    };
+
+    /* ---------- report ---------- */
+    const binOptions = bins.map((b, i) => ({ v: String(i), label: b.name }));
+    const oneBin = !!(bins[S.repBin] || bins[0]).one;
+    const effSide = oneBin ? 'wet' : S.repSide;
+    const sideDefs = oneBin ? [['wet', 'Whole bin', '#FFD23F']] : [['wet', 'Wet side', SIDE.wet], ['dry', 'Dry side', SIDE.dry]];
+    const sideChips = sideDefs.map(([k, label, color]) => {
+      const on = effSide === k;
+      return {
+        label,
+        bg: on ? color : '#FFFFFF',
+        shadow: on ? '0px 0px 0px #101820' : '3px 3px 0px #101820',
+        shift: on ? '3px' : '0px',
+        pressed: on ? 'true' : 'false',
+        pick: () => this.setState({ repSide: k })
+      };
+    });
+    const issueDefs = [['overflow', 'Overflowing'], ['damaged', 'Damaged'], ['skipped', 'Not collected'], ['smell', 'Bad smell'], ['missing', 'Missing bin']];
+    const issueChips = issueDefs.map(([k, label]) => {
+      const on = S.repIssue === k;
+      return {
+        label,
+        bg: on ? '#FFD23F' : '#FFFFFF',
+        shadow: on ? '0px 0px 0px #101820' : '3px 3px 0px #101820',
+        shift: on ? '3px' : '0px',
+        pressed: on ? 'true' : 'false',
+        pick: () => this.setState({ repIssue: k })
+      };
+    });
+    const repBinObj = bins[S.repBin] || bins[0];
+    const issueLabel = (issueDefs.find((d) => d[0] === S.repIssue) || issueDefs[0])[1];
+    const t = S.repTicket;
+    /* REPLACE with your real ticket log. */
+    const history = [
+      { title: 'Wet side full, Gandhi Bazaar', meta: 'CT-0412 · raised at 80% · collected in 2 h 40 min', status: 'COLLECTED', bg: '#A8E6C3' },
+      { title: 'Dry side full, National College campus gate', meta: 'CT-0409 · raised at 80% · collected in 4 h 05 min', status: 'COLLECTED', bg: '#A8E6C3' },
+      { title: 'Wet side full, National College school gate', meta: 'CT-0405 · raised at 80% · collected in 1 h 50 min', status: 'COLLECTED', bg: '#A8E6C3' },
+      { title: 'Wet side full, Gandhi Bazaar', meta: 'CT-0401 · raised at 80% · collected in 3 h 15 min', status: 'COLLECTED', bg: '#A8E6C3' }
+    ];
+
+    const nearest = loc ? Math.min.apply(null, bins.filter((b) => b.dm !== null).map((b) => b.dm)) : null;
+    const locText = S.locState === 'granted'
+      ? (nearest > 5000 ? 'You are ' + fmtD(nearest) + ' from the nearest CleanTrack bin. Our bins are in Basavanagudi.' : 'Showing the bins nearest to you first.')
+      : S.locState === 'denied' ? 'Location is off, so you see the Gandhi Bazaar and National College area. Allow location for this site in your browser to sort by distance.'
+      : S.locState === 'unavailable' ? 'We could not find your location. Showing the Gandhi Bazaar and National College area.'
+      : S.locState === 'unsupported' ? 'This browser cannot share a location. Showing the Gandhi Bazaar and National College area.'
+      : 'Asking for your location. Tap Allow to see bins near you.';
+
+    const out = {
+      isMap: view === 'map',
+      isAdd: view === 'add',
+      isReport: view === 'report',
+      tabs,
+      goMap: go('map'),
+      hasLoc: !!loc,
+      youLeft: loc ? proj(loc.lat, loc.lng).x + '%' : '50%',
+      youTop: loc ? proj(loc.lat, loc.lng).y + '%' : '50%',
+      showLocBtn: S.locState !== 'asking',
+      locBtn: S.locState === 'granted' ? 'Refresh my location' : 'Use my location',
+      onLoc: () => this.askLoc(),
+      locText: locText,
+      coordLine: loc ? loc.lat.toFixed(4) + '° N, ' + loc.lng.toFixed(4) + '° E · within ' + Math.round(loc.acc || 50) + ' m' : 'Location not shared. The bin is placed near the Gandhi Bazaar map centre.',
+      goHome: () => this.setState({ view: 'map', filter: 'all', query: '', addStep: 0, repTicket: null }),
+      goAdd: () => this.setState({ view: 'add', addStep: 0 }),
+      query,
+      chips,
+      rows,
+      pins,
+      noResults: visible.length === 0,
+      hasSel: !!sel,
+      shownText:
+        filter === 'all'
+          ? visible.length + ' of ' + bins.length + ' bins shown'
+          : visible.length + ' of ' + bins.length + ' bins have room on the ' + filter + ' side',
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      selName: '',
+      selMeta: '',
+      selStatus: '',
+      selStatusColor: '#FFFFFF',
+      selWetLabel: 'WET',
+      selShowDry: true,
+      selWetW: '0%',
+      selWetColor: '#B9C7C1',
+      selWetText: '—',
+      selDryW: '0%',
+      selDryColor: '#B9C7C1',
+      selDryText: '—',
+      selConfirm: '',
+      selConfirmed: false,
+      selConfirmLabel: 'Still there',
+      selConfirmBg: '#00A86B',
+      onConfirm: () => {},
+      onReportBin: () => {},
+      /* add */
+      methodRows,
+      qrCells,
+      sourceLine: sourceLines[method],
+      photoUrl: S.photoUrl,
+      hasPhoto: !!S.photoUrl && method === 'photo',
+      showNext: !(addStep === 0 && method === 'photo'),
+      onCamera: (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        e.target.value = '';
+        const r = new FileReader();
+        r.onload = () => this.setState({ photoUrl: String(r.result), view: 'add', method: 'photo', addStep: 1 });
+        r.readAsDataURL(f);
+      },
+      ctaLabel: addStep === 0 ? ctaFirst[method] : addStep === 1 ? 'Pin it' : 'View on map',
+      showQr: addStep === 0 && method === 'qr',
+      showPhoto: addStep === 0 && method === 'photo',
+      showManual: addStep === 0 && method === 'pin',
+      kindChips,
+      showConfirm: addStep === 1,
+      showDone: addStep === 2,
+      canReset: addStep > 0,
+      resetLabel: addStep === 2 ? 'Add another' : 'Start over',
+      onNext,
+      onReset: () => this.setState({ addStep: 0, photoUrl: '' }),
+      /* report */
+      binOptions,
+      repBinStr: String(S.repBin),
+      onRepBin: (e) => this.setState({ repBin: Number(e.target.value) }),
+      sideChips,
+      issueChips,
+      repNote: S.repNote,
+      onRepNote: (e) => this.setState({ repNote: e.target.value }),
+      repPhoto: S.repPhoto,
+      photoLabel: S.repPhoto ? 'Remove photo' : 'Add a photo (demo)',
+      onRepPhoto: () => this.setState({ repPhoto: !S.repPhoto }),
+      repOpen: !t,
+      repSent: !!t,
+      onSend: () => {
+        const n = S.tickets + 1;
+        const tk = { id: 'CT-' + (1000 + n), bin: repBinObj.name, issue: issueLabel, side: effSide, sideText: oneBin ? 'whole bin' : effSide + ' side', note: S.repNote.trim() };
+        this.setState({ tickets: n, repTicket: tk, records: [tk].concat(S.records), copied: false, marked: false });
+      },
+      ticketMessage: t ? ('To: the city corporation office for this ward\nSubject: Public dustbin problem: ' + t.issue + ' (' + t.sideText + ')\n\nBin: ' + t.bin + ', Bengaluru\nProblem: ' + t.issue + ', ' + t.sideText + '\n' + (t.note ? 'Note: ' + t.note + '\n' : '') + 'CleanTrack reference: ' + t.id + '\n\nPlease arrange to have this attended to.') : '',
+      onMsgKeep: () => {},
+      onCopy: () => {
+        const txt = out.ticketMessage;
+        try { navigator.clipboard.writeText(txt).then(() => this.setState({ copied: true }), () => this.setState({ copied: true })); } catch (e) { this.setState({ copied: true }); }
+        this.setState({ copied: true });
+      },
+      copyLabel: S.copied ? 'Copied' : 'Copy message',
+      onMarkSent: () => this.setState({ marked: true }),
+      sentDone: S.marked,
+      sentLabel: S.marked ? 'Marked as sent' : 'I sent it',
+      sentBtnBg: S.marked ? '#A8E6C3' : '#FFFFFF',
+      sentBoxBg: S.marked ? '#00A86B' : '#FFFFFF',
+      sentText: S.marked ? 'Sent to the city corporation by you' : 'Not sent to the city yet. Copy the message and send it',
+      recordRows: S.records.map((r) => ({ title: r.issue + ' · ' + r.sideText, meta: r.bin + ' · ' + r.id + ' · logged by a neighbour', status: 'LOGGED', statusBg: '#FFD23F' })).concat(history.map((h) => ({ title: h.title, meta: h.meta, status: h.status, statusBg: h.bg }))),
+      ticketId: t ? t.id : '',
+      ticketSummary: t ? t.issue + ', ' + t.sideText + ', ' + t.bin + '.' : '',
+      onAnother: () => this.setState({ repTicket: null, repNote: '', repPhoto: false })
+    };
+    if (sel) {
+      const st = status(sel);
+      const n = counts[sel.i];
+      out.selName = sel.name;
+      out.selMeta = (sel.d ? sel.d + ' away · ' : '') + (sel.one ? 'one bin' : 'wet and dry sides');
+      out.selWetLabel = sel.one ? 'FILL' : 'WET';
+      out.selShowDry = !sel.one;
+      out.selStatus = st.t;
+      out.selStatusColor = st.c;
+      out.selWetW = wid(sel.wet);
+      out.selWetColor = stat(sel.wet);
+      out.selWetText = pct(sel.wet);
+      out.selDryW = wid(sel.dry);
+      out.selDryColor = stat(sel.dry);
+      out.selDryText = pct(sel.dry);
+      out.selConfirm = 'Confirmed by ' + n + (n === 1 ? ' neighbour' : ' neighbours');
+      const done = this.state.confirmed.indexOf(sel.i) !== -1;
+      out.selConfirmed = done;
+      out.selConfirmLabel = done ? 'Confirmed, thanks' : 'Still there';
+      out.selConfirmBg = done ? '#D5DAD8' : '#00A86B';
+      out.onConfirm = () => {
+        if (this.state.confirmed.indexOf(sel.i) !== -1) return;
+        const next = this.state.counts.slice();
+        next[sel.i] = next[sel.i] + 1;
+        this.setState({ counts: next, confirmed: this.state.confirmed.concat([sel.i]) });
+      };
+      out.onReportBin = () => {
+        const side = sel.wet === null ? (filter === 'dry' ? 'dry' : 'wet') : sel.dry > sel.wet ? 'dry' : 'wet';
+        this.setState({ view: 'report', repBin: sel.i, repSide: side, repTicket: null });
+      };
+    }
+    return out;
+  }
+}
+
+
+(function () {
+  const tpl = document.getElementById('tpl').content;
+  const root = document.getElementById('app');
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const get = (scope, path) => {
+    let v = scope;
+    for (const k of path.trim().split('.')) { if (v == null) return undefined; v = v[k]; }
+    return v;
+  };
+  const HOLE = /\{\{\s*([^}]+?)\s*\}\}/g;
+  const whole = /^\{\{\s*([^}]+?)\s*\}\}$/;
+  const interp = (str, scope) => str.replace(HOLE, (m, p) => { const v = get(scope, p); return v == null || v === false ? '' : String(v); });
+  const truthy = (v) => v !== false && v != null && v !== '' && v !== 'false' && v !== 0;
+  function build(node, scope, out) {
+    if (node.nodeType === 3) { out.appendChild(document.createTextNode(interp(node.nodeValue, scope))); return; }
+    if (node.nodeType !== 1) return;
+    const tag = node.localName;
+    if (tag === 'sc-if') {
+      const m = node.getAttribute('value').match(whole);
+      if (truthy(m ? get(scope, m[1]) : node.getAttribute('value'))) for (const c of node.childNodes) build(c, scope, out);
+      return;
+    }
+    if (tag === 'sc-for') {
+      const list = get(scope, node.getAttribute('list').match(whole)[1]) || [];
+      const as = node.getAttribute('as');
+      list.forEach((item) => { const sc = Object.create(scope); sc[as] = item; for (const c of node.childNodes) build(c, sc, out); });
+      return;
+    }
+    if (node.hasAttribute('data-sc-for')) {
+      const list = get(scope, node.getAttribute('data-sc-for').match(whole)[1]) || [];
+      const as = node.getAttribute('data-sc-as');
+      list.forEach((item) => { const sc = Object.create(scope); sc[as] = item; build2(node, sc, out, true); });
+      return;
+    }
+    build2(node, scope, out, false);
+  }
+  function build2(node, scope, out, skipFor) {
+    const el = node.namespaceURI === SVGNS ? document.createElementNS(SVGNS, node.localName) : document.createElement(node.localName);
+    let pendingValue = null;
+    for (const a of node.attributes) {
+      const name = a.name;
+      if (name.startsWith('hint-placeholder') || (skipFor && (name === 'data-sc-for' || name === 'data-sc-as'))) continue;
+      const m = a.value.match(whole);
+      const lower = name.toLowerCase();
+      if (lower.startsWith('on') && m) {
+        const fn = get(scope, m[1]);
+        if (typeof fn === 'function') {
+          const evt = lower === 'onclick' ? 'click' : lower === 'onchange' ? 'change' : lower === 'oninput' ? 'input' : lower.slice(2);
+          el.addEventListener(evt, fn);
+        }
+        continue;
+      }
+      const v = m ? get(scope, m[1]) : interp(a.value, scope);
+      if (name === 'value' && /^(input|select|textarea)$/.test(node.localName)) { pendingValue = v == null ? '' : String(v); if (node.localName !== 'textarea') el.setAttribute('value', pendingValue); continue; }
+      if (typeof v === 'boolean' || (m && v == null)) { if (v) el.setAttribute(name, ''); continue; }
+      el.setAttribute(name, m ? String(v) : v);
+    }
+    for (const c of node.childNodes) build(c, scope, el);
+    if (pendingValue !== null) el.value = pendingValue;
+    out.appendChild(el);
+  }
+  const app = new Component({});
+  app._render = function () {
+    const vals = app.renderVals();
+    const active = document.activeElement && document.activeElement.id;
+    const frag = document.createDocumentFragment();
+    for (const c of tpl.childNodes) build(c, vals, frag);
+    root.replaceChildren(frag);
+    if (active) { const el = document.getElementById(active); if (el && el.focus) el.focus(); }
+  };
+  app._render();
+})();
+
+</script>
+</body>
+</html>
