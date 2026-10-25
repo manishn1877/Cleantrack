@@ -51,18 +51,11 @@ PORT=8080 API_KEY=change-me WARD_EMAIL=your-real-address@example.org python3 rep
 
 Sensors send readings to `POST /api/readings` with the API key. The site sends reports to `POST /api/reports`.
 
-## Putting it on GitHub Pages
-
-1. Create a repository and upload `site/index.html` (you can rename the folder contents to the repo root).
-2. In the repository go to Settings, then Pages, choose the `main` branch and the root folder, and save.
-3. Open the `https://<your-username>.github.io/<repo>/` link. Pages is served over HTTPS, which browsers require before they will ask for location.
-
-On first visit the browser asks "Allow this site to know your location?". If you allow, bins are sorted by distance and your position shows on the map. If you block it, the site shows the Gandhi Bazaar and National College area and offers a "Use my location" button.
-
-The bin coordinates in `site/index.html` (search for `baseBins`) are approximate points near Gandhi Bazaar and National College. Replace them, and the readings and the ticket list (`history`), with your real data.
-
 ## Still to do
 
 - Get a real address or form from a city corporation, and set `WARD_EMAIL`.
 - Connect the page to the backend, so new bins, readings and tickets are stored instead of living in the page.
 - Add a QR sticker generator for bin owners
+
+#History
+This is the first sem project used in real time, and we tested that it connects to different dustbins that have a sensor to detect the level of waste. We tested across a few stores and also met a few ppl who agreed to add their dustbins to the website so ppl can use their dustbins, and our whole class used this website to test 
